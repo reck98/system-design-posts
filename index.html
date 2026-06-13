@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>System Design Tracker</title>
+<style>
+:root{
+--bg:#020817;--card:#0f172a;--card2:#111c34;--text:#e2e8f0;--muted:#94a3b8;
+--accent:#38bdf8;--border:#1e293b;--green:#22c55e;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:Inter,Arial,sans-serif;background:var(--bg);color:var(--text)}
+.container{max-width:1100px;margin:auto;padding:24px}
+h1{margin:0;font-size:clamp(2rem,4vw,3rem)}
+.subtitle{color:var(--muted)}
+.toolbar{display:flex;gap:12px;flex-wrap:wrap;margin:20px 0}
+input,select{
+background:var(--card);color:var(--text);border:1px solid var(--border);
+padding:10px 12px;border-radius:10px
+}
+#search{flex:1;min-width:220px}
+.stats{margin:16px 0}
+.progress{height:10px;background:var(--card);border-radius:999px;overflow:hidden}
+.fill{height:100%;background:var(--green);width:0%}
+.post{
+display:flex;align-items:center;gap:16px;background:var(--card);
+border:1px solid var(--border);padding:14px;border-radius:14px;
+margin-bottom:10px
+}
+.post:hover{border-color:var(--accent)}
+.post.completed{opacity:.6}
+.date{color:var(--muted);min-width:110px;font-size:.9rem}
+.title{flex:1;cursor:pointer;font-weight:600}
+#reader{display:none}
+.reader-card{
+background:var(--card);border:1px solid var(--border);
+padding:24px;border-radius:16px
+}
+.back{
+background:var(--accent);border:none;padding:10px 14px;
+border-radius:10px;cursor:pointer;margin-bottom:16px
+}
+.content{white-space:pre-wrap;line-height:1.7}
+footer{
+margin-top:40px;padding-top:20px;border-top:1px solid var(--border);
+text-align:center;color:var(--muted)
+}
+</style>
+</head>
+<body>
+<div class="container">
+
+<div id="home">
+<h1>System Design Reading Tracker</h1>
+<p class="subtitle">Track your progress through Aditya Tandon Sir's System Design posts.</p>
+
+<div class="toolbar">
+<input id="search" placeholder="🔍 Search posts...">
+<select id="sort">
+<option value="newest">Newest First</option>
+<option value="oldest">Oldest First</option>
+<option value="az">Title A-Z</option>
+<option value="za">Title Z-A</option>
+</select>
+<select id="filter">
+<option value="all">All Posts</option>
+<option value="completed">Completed</option>
+<option value="incomplete">Incomplete</option>
+</select>
+</div>
+
+<div class="stats">
+<div id="progressText">0 / 0 completed</div>
+<div class="progress"><div id="fill" class="fill"></div></div>
+</div>
+
+<div id="posts"></div>
+
+<footer>
+<p>Content credit: <strong>Aditya Tandon Sir</strong>. These posts are compiled here purely for educational and personal learning purposes.</p>
+</footer>
+</div>
+
+<div id="reader">
+<button class="back" onclick="showHome()">← Back to Posts</button>
+<div class="reader-card">
+<h2 id="readerTitle"></h2>
+<p id="readerDate" style="color:#94a3b8"></p>
+<hr style="border-color:#1e293b">
+<div id="readerContent" class="content"></div>
+</div>
+</div>
+
+</div>
+
+<script>
+let posts=[];
+const KEY="sd_tracker";
+
+function state(){return JSON.parse(localStorage.getItem(KEY)||"{}");}
+function save(s){localStorage.setItem(KEY,JSON.stringify(s));}
+
+function progress(){
+ const s=state();
+ const done=Object.values(s).filter(Boolean).length;
+ document.getElementById('progressText').innerText=`${done} / ${posts.length} completed (${posts.length?((done/posts.length)*100).toFixed(1):0}%)`;
+ document.getElementById('fill').style.width=(posts.length?done/posts.length*100:0)+'%';
+}
+
+function render(){
+ let arr=[...posts];
+ const q=document.getElementById('search').value.toLowerCase();
+ const filter=document.getElementById('filter').value;
+ const sort=document.getElementById('sort').value;
+ const s=state();
+
+ arr=arr.filter(p=>(p.title+p.content).toLowerCase().includes(q));
+
+ if(filter==="completed") arr=arr.filter((p,i)=>s[p.date+p.title]);
+ if(filter==="incomplete") arr=arr.filter((p,i)=>!s[p.date+p.title]);
+
+ if(sort==="newest") arr.sort((a,b)=>b.date.localeCompare(a.date));
+ if(sort==="oldest") arr.sort((a,b)=>a.date.localeCompare(b.date));
+ if(sort==="az") arr.sort((a,b)=>a.title.localeCompare(b.title));
+ if(sort==="za") arr.sort((a,b)=>b.title.localeCompare(a.title));
+
+ const c=document.getElementById('posts');
+ c.innerHTML='';
+
+ arr.forEach(p=>{
+   const id=p.date+p.title;
+   const checked=!!s[id];
+
+   const div=document.createElement('div');
+   div.className='post'+(checked?' completed':'');
+
+   div.innerHTML=`
+   <input type="checkbox" ${checked?'checked':''}>
+   <div class="date">${p.date}</div>
+   <div class="title">${p.title}</div>`;
+
+   div.querySelector('input').onchange=e=>{
+      const st=state();
+      st[id]=e.target.checked;
+      save(st);
+      render();
+      progress();
+   };
+
+   div.querySelector('.title').onclick=()=>openPost(p);
+   c.appendChild(div);
+ });
+
+ progress();
+}
+
+function openPost(post){
+ document.getElementById('home').style.display='none';
+ document.getElementById('reader').style.display='block';
+ document.getElementById('readerTitle').innerText=post.title;
+ document.getElementById('readerDate').innerText=post.date;
+ document.getElementById('readerContent').innerText=post.content;
+ window.scrollTo(0,0);
+}
+
+function showHome(){
+ document.getElementById('reader').style.display='none';
+ document.getElementById('home').style.display='block';
+}
+
+document.getElementById('search').oninput=render;
+document.getElementById('sort').onchange=render;
+document.getElementById('filter').onchange=render;
+
+fetch('./system_design_posts.json')
+.then(r=>r.json())
+.then(data=>{posts=data;render();})
+.catch(err=>{
+ document.getElementById('posts').innerHTML='<p>Failed to load system_design_posts.json</p>';
+ console.error(err);
+});
+</script>
+</body>
+</html>
