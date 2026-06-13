@@ -1,8 +1,11 @@
-<!DOCTYPE html><html lang="en">
+<!DOCTYPE html>
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>System Design Tracker</title><style>
+<title>System Design Reading Tracker</title>
+
+<style>
 * {
     margin: 0;
     padding: 0;
@@ -10,7 +13,7 @@
 }
 
 body {
-    font-family: Inter, sans-serif;
+    font-family: Inter, Arial, sans-serif;
     background: #0f172a;
     color: #e2e8f0;
     padding: 32px;
@@ -22,12 +25,18 @@ body {
 }
 
 h1 {
+    margin-bottom: 8px;
+}
+
+.subtitle {
+    color: #94a3b8;
     margin-bottom: 24px;
 }
 
 .stats {
     margin-bottom: 24px;
     color: #94a3b8;
+    font-size: 15px;
 }
 
 .post {
@@ -39,7 +48,7 @@ h1 {
     padding: 14px 18px;
     border-radius: 10px;
     margin-bottom: 10px;
-    transition: 0.2s;
+    transition: all 0.2s ease;
 }
 
 .post:hover {
@@ -61,7 +70,7 @@ input[type="checkbox"] {
 }
 
 .date {
-    min-width: 110px;
+    min-width: 120px;
     color: #94a3b8;
     font-size: 14px;
 }
@@ -74,18 +83,46 @@ input[type="checkbox"] {
 .loading {
     color: #94a3b8;
 }
-</style></head>
-<body><div class="container"><h1>System Design Reading Tracker</h1>
 
-<div class="stats">
-    <span id="progress">0 / 0 completed</span>
+footer {
+    margin-top: 40px;
+    padding-top: 20px;
+    border-top: 1px solid #334155;
+    text-align: center;
+    color: #94a3b8;
+    font-size: 14px;
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+    <h1>System Design Reading Tracker</h1>
+
+    <p class="subtitle">
+        Track your progress through Aditya Tandon Sir's System Design posts.
+    </p>
+
+    <div class="stats">
+        <span id="progress">0 / 0 completed</span>
+    </div>
+
+    <div id="posts">
+        <p class="loading">Loading posts...</p>
+    </div>
+
+    <footer>
+        <p>
+            Content credit: <strong>Aditya Tandon Sir</strong>.
+            These posts are compiled here purely for educational and personal learning purposes.
+        </p>
+    </footer>
+
 </div>
 
-<div id="posts">
-    <p class="loading">Loading posts...</p>
-</div>
-
-</div><script>
+<script>
 
 const STORAGE_KEY = "system_design_completed";
 
@@ -96,42 +133,68 @@ async function loadCSV() {
 
     const rows = csvText.trim().split("\n");
 
-    const data = [];
+    const posts = [];
 
     for (let i = 1; i < rows.length; i++) {
 
         const line = rows[i];
 
-        const firstComma = line.indexOf(",");
-        const secondComma = line.indexOf(",", firstComma + 1);
+        let inQuotes = false;
+        let commaCount = 0;
+        let splitIndex = -1;
 
-        const date = line.substring(0, firstComma).replaceAll('"', '');
-        const title = line.substring(firstComma + 1, secondComma).replaceAll('"', '');
+        for (let j = 0; j < line.length; j++) {
 
-        data.push({
+            if (line[j] === '"')
+                inQuotes = !inQuotes;
+
+            if (!inQuotes && line[j] === ',') {
+                commaCount++;
+
+                if (commaCount === 2) {
+                    splitIndex = j;
+                    break;
+                }
+            }
+        }
+
+        if (splitIndex === -1) continue;
+
+        const parts = line.substring(0, splitIndex).split(",");
+
+        const date = parts[0].replaceAll('"', '').trim();
+        const title = parts[1].replaceAll('"', '').trim();
+
+        posts.push({
             date,
             title
         });
     }
 
-    return data;
+    return posts;
 }
 
 function getCompleted() {
-    return JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
+    return JSON.parse(
+        localStorage.getItem(STORAGE_KEY) || "{}"
+    );
 }
 
 function saveCompleted(data) {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    localStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify(data)
+    );
 }
 
 function updateProgress(total) {
 
     const completed = getCompleted();
 
-    const count = Object.values(completed)
-        .filter(v => v)
-        .length;
+    const count =
+        Object.values(completed)
+              .filter(Boolean)
+              .length;
 
     document.getElementById("progress").innerText =
         `${count} / ${total} completed`;
@@ -139,44 +202,64 @@ function updateProgress(total) {
 
 function render(posts) {
 
-    const container = document.getElementById("posts");
+    const container =
+        document.getElementById("posts");
+
     container.innerHTML = "";
 
     const completed = getCompleted();
 
     posts.forEach((post, index) => {
 
-        const row = document.createElement("div");
+        const row =
+            document.createElement("div");
+
         row.className = "post";
 
-        const checked = completed[index] || false;
+        const checked =
+            completed[index] || false;
 
         if (checked)
             row.classList.add("completed");
 
         row.innerHTML = `
-            <input type="checkbox" ${checked ? "checked" : ""}>
-            <div class="date">${post.date}</div>
-            <div class="title">${post.title}</div>
+            <input
+                type="checkbox"
+                ${checked ? "checked" : ""}
+            >
+
+            <div class="date">
+                ${post.date}
+            </div>
+
+            <div class="title">
+                ${post.title}
+            </div>
         `;
 
-        const checkbox = row.querySelector("input");
+        const checkbox =
+            row.querySelector("input");
 
-        checkbox.addEventListener("change", () => {
+        checkbox.addEventListener(
+            "change",
+            () => {
 
-            const data = getCompleted();
+                const data =
+                    getCompleted();
 
-            data[index] = checkbox.checked;
+                data[index] =
+                    checkbox.checked;
 
-            saveCompleted(data);
+                saveCompleted(data);
 
-            row.classList.toggle(
-                "completed",
-                checkbox.checked
-            );
+                row.classList.toggle(
+                    "completed",
+                    checkbox.checked
+                );
 
-            updateProgress(posts.length);
-        });
+                updateProgress(posts.length);
+            }
+        );
 
         container.appendChild(row);
     });
@@ -186,5 +269,7 @@ function render(posts) {
 
 loadCSV().then(render);
 
-</script></body>
-  </html>
+</script>
+
+</body>
+</html>
