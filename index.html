@@ -1,0 +1,190 @@
+<!DOCTYPE html><html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>System Design Tracker</title><style>
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: Inter, sans-serif;
+    background: #0f172a;
+    color: #e2e8f0;
+    padding: 32px;
+}
+
+.container {
+    max-width: 900px;
+    margin: auto;
+}
+
+h1 {
+    margin-bottom: 24px;
+}
+
+.stats {
+    margin-bottom: 24px;
+    color: #94a3b8;
+}
+
+.post {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    background: #1e293b;
+    border: 1px solid #334155;
+    padding: 14px 18px;
+    border-radius: 10px;
+    margin-bottom: 10px;
+    transition: 0.2s;
+}
+
+.post:hover {
+    border-color: #64748b;
+}
+
+.post.completed {
+    opacity: 0.55;
+}
+
+.post.completed .title {
+    text-decoration: line-through;
+}
+
+input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+}
+
+.date {
+    min-width: 110px;
+    color: #94a3b8;
+    font-size: 14px;
+}
+
+.title {
+    flex: 1;
+    font-weight: 500;
+}
+
+.loading {
+    color: #94a3b8;
+}
+</style></head>
+<body><div class="container"><h1>System Design Reading Tracker</h1>
+
+<div class="stats">
+    <span id="progress">0 / 0 completed</span>
+</div>
+
+<div id="posts">
+    <p class="loading">Loading posts...</p>
+</div>
+
+</div><script>
+
+const STORAGE_KEY = "system_design_completed";
+
+async function loadCSV() {
+
+    const response = await fetch("system_design_posts_with_titles.csv");
+    const csvText = await response.text();
+
+    const rows = csvText.trim().split("\n");
+
+    const data = [];
+
+    for (let i = 1; i < rows.length; i++) {
+
+        const line = rows[i];
+
+        const firstComma = line.indexOf(",");
+        const secondComma = line.indexOf(",", firstComma + 1);
+
+        const date = line.substring(0, firstComma).replaceAll('"', '');
+        const title = line.substring(firstComma + 1, secondComma).replaceAll('"', '');
+
+        data.push({
+            date,
+            title
+        });
+    }
+
+    return data;
+}
+
+function getCompleted() {
+    return JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
+}
+
+function saveCompleted(data) {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+}
+
+function updateProgress(total) {
+
+    const completed = getCompleted();
+
+    const count = Object.values(completed)
+        .filter(v => v)
+        .length;
+
+    document.getElementById("progress").innerText =
+        `${count} / ${total} completed`;
+}
+
+function render(posts) {
+
+    const container = document.getElementById("posts");
+    container.innerHTML = "";
+
+    const completed = getCompleted();
+
+    posts.forEach((post, index) => {
+
+        const row = document.createElement("div");
+        row.className = "post";
+
+        const checked = completed[index] || false;
+
+        if (checked)
+            row.classList.add("completed");
+
+        row.innerHTML = `
+            <input type="checkbox" ${checked ? "checked" : ""}>
+            <div class="date">${post.date}</div>
+            <div class="title">${post.title}</div>
+        `;
+
+        const checkbox = row.querySelector("input");
+
+        checkbox.addEventListener("change", () => {
+
+            const data = getCompleted();
+
+            data[index] = checkbox.checked;
+
+            saveCompleted(data);
+
+            row.classList.toggle(
+                "completed",
+                checkbox.checked
+            );
+
+            updateProgress(posts.length);
+        });
+
+        container.appendChild(row);
+    });
+
+    updateProgress(posts.length);
+}
+
+loadCSV().then(render);
+
+</script></body>
+  </html>
