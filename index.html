@@ -3,48 +3,68 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>System Design Tracker</title>
+<title>System Design Reading Tracker</title>
 <style>
 :root{
---bg:#020817;--card:#0f172a;--card2:#111c34;--text:#e2e8f0;--muted:#94a3b8;
+--bg:#020817;--card:#0f172a;--text:#e2e8f0;--muted:#94a3b8;
 --accent:#38bdf8;--border:#1e293b;--green:#22c55e;
 }
-*{box-sizing:border-box}
-body{margin:0;font-family:Inter,Arial,sans-serif;background:var(--bg);color:var(--text)}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:Inter,Arial,sans-serif;background:var(--bg);color:var(--text)}
 .container{max-width:1100px;margin:auto;padding:24px}
-h1{margin:0;font-size:clamp(2rem,4vw,3rem)}
-.subtitle{color:var(--muted)}
+h1{font-size:clamp(2.2rem,5vw,3.5rem);margin-bottom:8px}
+.subtitle{color:var(--muted);margin-bottom:20px}
 .toolbar{display:flex;gap:12px;flex-wrap:wrap;margin:20px 0}
 input,select{
-background:var(--card);color:var(--text);border:1px solid var(--border);
-padding:10px 12px;border-radius:10px
+background:var(--card);color:var(--text);
+border:1px solid var(--border);padding:12px;
+border-radius:12px;
 }
 #search{flex:1;min-width:220px}
-.stats{margin:16px 0}
-.progress{height:10px;background:var(--card);border-radius:999px;overflow:hidden}
-.fill{height:100%;background:var(--green);width:0%}
+.stats{margin:18px 0}
+.progress{height:10px;background:var(--card);border-radius:999px;overflow:hidden;margin-top:8px}
+.fill{height:100%;width:0;background:var(--green)}
 .post{
-display:flex;align-items:center;gap:16px;background:var(--card);
-border:1px solid var(--border);padding:14px;border-radius:14px;
-margin-bottom:10px
+display:flex;align-items:center;gap:16px;
+background:var(--card);
+border:1px solid var(--border);
+padding:16px;border-radius:14px;
+margin-bottom:10px;
+transition:.2s;
 }
 .post:hover{border-color:var(--accent)}
 .post.completed{opacity:.6}
-.date{color:var(--muted);min-width:110px;font-size:.9rem}
-.title{flex:1;cursor:pointer;font-weight:600}
+.date{min-width:110px;color:var(--muted);font-size:.9rem}
+.title{flex:1;font-weight:600;cursor:pointer}
 #reader{display:none}
-.reader-card{
-background:var(--card);border:1px solid var(--border);
-padding:24px;border-radius:16px
-}
 .back{
-background:var(--accent);border:none;padding:10px 14px;
-border-radius:10px;cursor:pointer;margin-bottom:16px
+background:var(--accent);border:none;
+padding:12px 18px;border-radius:12px;
+cursor:pointer;margin-bottom:18px;
+font-weight:600;
 }
-.content{white-space:pre-wrap;line-height:1.7}
+.reader-card{
+background:var(--card);
+border:1px solid var(--border);
+border-radius:18px;
+padding:24px;
+}
+.content{white-space:pre-wrap;line-height:1.9;font-size:1.05rem}
+.copy-btn{
+background:var(--green);
+color:white;
+border:none;
+padding:10px 14px;
+border-radius:10px;
+cursor:pointer;
+margin:12px 0 18px 0;
+font-weight:600;
+}
 footer{
-margin-top:40px;padding-top:20px;border-top:1px solid var(--border);
-text-align:center;color:var(--muted)
+margin-top:40px;padding-top:20px;
+border-top:1px solid var(--border);
+text-align:center;color:var(--muted);
+line-height:1.6;
 }
 </style>
 </head>
@@ -63,6 +83,7 @@ text-align:center;color:var(--muted)
 <option value="az">Title A-Z</option>
 <option value="za">Title Z-A</option>
 </select>
+
 <select id="filter">
 <option value="all">All Posts</option>
 <option value="completed">Completed</option>
@@ -78,16 +99,26 @@ text-align:center;color:var(--muted)
 <div id="posts"></div>
 
 <footer>
-<p>Content credit: <strong>Aditya Tandon Sir</strong>. These posts are compiled here purely for educational and personal learning purposes.</p>
+<p>
+Content credit: <strong>Aditya Tandon Sir</strong>.
+These posts are compiled here purely for educational and personal learning purposes.
+</p>
 </footer>
 </div>
 
 <div id="reader">
 <button class="back" onclick="showHome()">← Back to Posts</button>
+
 <div class="reader-card">
 <h2 id="readerTitle"></h2>
-<p id="readerDate" style="color:#94a3b8"></p>
-<hr style="border-color:#1e293b">
+<p id="readerDate" style="color:#94a3b8;margin-top:10px"></p>
+
+<button id="copyBtn" class="copy-btn">
+📋 Copy Post
+</button>
+
+<hr style="margin:18px 0;border-color:#1e293b">
+
 <div id="readerContent" class="content"></div>
 </div>
 </div>
@@ -98,86 +129,145 @@ text-align:center;color:var(--muted)
 let posts=[];
 const KEY="sd_tracker";
 
-function state(){return JSON.parse(localStorage.getItem(KEY)||"{}");}
-function save(s){localStorage.setItem(KEY,JSON.stringify(s));}
+function state(){
+ return JSON.parse(localStorage.getItem(KEY)||"{}");
+}
 
-function progress(){
+function save(s){
+ localStorage.setItem(KEY,JSON.stringify(s));
+}
+
+function updateProgress(){
  const s=state();
  const done=Object.values(s).filter(Boolean).length;
- document.getElementById('progressText').innerText=`${done} / ${posts.length} completed (${posts.length?((done/posts.length)*100).toFixed(1):0}%)`;
- document.getElementById('fill').style.width=(posts.length?done/posts.length*100:0)+'%';
+
+ document.getElementById("progressText").innerText=
+ `${done} / ${posts.length} completed (${posts.length?((done/posts.length)*100).toFixed(1):0}%)`;
+
+ document.getElementById("fill").style.width=
+ (posts.length?(done/posts.length)*100:0)+"%";
 }
 
 function render(){
  let arr=[...posts];
- const q=document.getElementById('search').value.toLowerCase();
- const filter=document.getElementById('filter').value;
- const sort=document.getElementById('sort').value;
- const s=state();
 
- arr=arr.filter(p=>(p.title+p.content).toLowerCase().includes(q));
+ const q=document.getElementById("search").value.toLowerCase();
+ const filter=document.getElementById("filter").value;
+ const sort=document.getElementById("sort").value;
 
- if(filter==="completed") arr=arr.filter((p,i)=>s[p.date+p.title]);
- if(filter==="incomplete") arr=arr.filter((p,i)=>!s[p.date+p.title]);
+ const st=state();
 
- if(sort==="newest") arr.sort((a,b)=>b.date.localeCompare(a.date));
- if(sort==="oldest") arr.sort((a,b)=>a.date.localeCompare(b.date));
- if(sort==="az") arr.sort((a,b)=>a.title.localeCompare(b.title));
- if(sort==="za") arr.sort((a,b)=>b.title.localeCompare(a.title));
+ arr=arr.filter(p=>
+   (p.title+" "+p.content).toLowerCase().includes(q)
+ );
 
- const c=document.getElementById('posts');
- c.innerHTML='';
+ if(filter==="completed")
+   arr=arr.filter(p=>st[p.date+p.title]);
 
- arr.forEach(p=>{
-   const id=p.date+p.title;
-   const checked=!!s[id];
+ if(filter==="incomplete")
+   arr=arr.filter(p=>!st[p.date+p.title]);
 
-   const div=document.createElement('div');
-   div.className='post'+(checked?' completed':'');
+ if(sort==="newest")
+   arr.sort((a,b)=>b.date.localeCompare(a.date));
 
-   div.innerHTML=`
-   <input type="checkbox" ${checked?'checked':''}>
-   <div class="date">${p.date}</div>
-   <div class="title">${p.title}</div>`;
+ if(sort==="oldest")
+   arr.sort((a,b)=>a.date.localeCompare(b.date));
 
-   div.querySelector('input').onchange=e=>{
-      const st=state();
-      st[id]=e.target.checked;
-      save(st);
+ if(sort==="az")
+   arr.sort((a,b)=>a.title.localeCompare(b.title));
+
+ if(sort==="za")
+   arr.sort((a,b)=>b.title.localeCompare(a.title));
+
+ const container=document.getElementById("posts");
+ container.innerHTML="";
+
+ arr.forEach(post=>{
+
+   const id=post.date+post.title;
+   const checked=!!st[id];
+
+   const row=document.createElement("div");
+   row.className="post"+(checked?" completed":"");
+
+   row.innerHTML=`
+   <input type="checkbox" ${checked?"checked":""}>
+   <div class="date">${post.date}</div>
+   <div class="title">${post.title}</div>
+   `;
+
+   row.querySelector("input").onchange=(e)=>{
+      const s=state();
+      s[id]=e.target.checked;
+      save(s);
       render();
-      progress();
+      updateProgress();
    };
 
-   div.querySelector('.title').onclick=()=>openPost(p);
-   c.appendChild(div);
+   row.querySelector(".title").onclick=()=>openPost(post);
+
+   container.appendChild(row);
  });
 
- progress();
+ updateProgress();
 }
 
 function openPost(post){
- document.getElementById('home').style.display='none';
- document.getElementById('reader').style.display='block';
- document.getElementById('readerTitle').innerText=post.title;
- document.getElementById('readerDate').innerText=post.date;
- document.getElementById('readerContent').innerText=post.content;
+
+ document.getElementById("home").style.display="none";
+ document.getElementById("reader").style.display="block";
+
+ document.getElementById("readerTitle").innerText=post.title;
+ document.getElementById("readerDate").innerText=post.date;
+ document.getElementById("readerContent").innerText=post.content;
+
+ const btn=document.getElementById("copyBtn");
+
+ btn.innerText="📋 Copy Post";
+
+ btn.onclick=async()=>{
+
+   const text=`${post.title}
+
+${post.date}
+
+${post.content}`;
+
+   try{
+      await navigator.clipboard.writeText(text);
+
+      btn.innerText="✅ Copied!";
+
+      setTimeout(()=>{
+         btn.innerText="📋 Copy Post";
+      },2000);
+
+   }catch(err){
+      alert("Failed to copy post");
+   }
+ };
+
  window.scrollTo(0,0);
 }
 
 function showHome(){
- document.getElementById('reader').style.display='none';
- document.getElementById('home').style.display='block';
+ document.getElementById("reader").style.display="none";
+ document.getElementById("home").style.display="block";
 }
 
-document.getElementById('search').oninput=render;
-document.getElementById('sort').onchange=render;
-document.getElementById('filter').onchange=render;
+document.getElementById("search").oninput=render;
+document.getElementById("sort").onchange=render;
+document.getElementById("filter").onchange=render;
 
-fetch('./system_design_posts.json')
+fetch("./system_design_posts.json")
 .then(r=>r.json())
-.then(data=>{posts=data;render();})
+.then(data=>{
+ posts=data;
+ render();
+})
 .catch(err=>{
- document.getElementById('posts').innerHTML='<p>Failed to load system_design_posts.json</p>';
+ document.getElementById("posts").innerHTML=
+ "<p>Failed to load system_design_posts.json</p>";
  console.error(err);
 });
 </script>
